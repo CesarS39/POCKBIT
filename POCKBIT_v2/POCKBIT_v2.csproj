@@ -263,6 +263,7 @@
     <Content Include="Paginas\laboratorios.aspx" />
     <Content Include="Paginas\lotes.aspx" />
     <Content Include="Paginas\medicamentos.aspx" />
+    <Content Include="Paginas\prueba.aspx" />
     <Content Include="Paginas\ventas.aspx" />
     <Content Include="Scripts\bootstrap.bundle.js" />
     <Content Include="Scripts\bootstrap.bundle.min.js" />
@@ -506,6 +507,13 @@
     </Compile>
     <Compile Include="Paginas\medicamentos.aspx.designer.cs">
       <DependentUpon>medicamentos.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Paginas\prueba.aspx.cs">
+      <DependentUpon>prueba.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Paginas\prueba.aspx.designer.cs">
+      <DependentUpon>prueba.aspx</DependentUpon>
     </Compile>
     <Compile Include="Paginas\ventas.aspx.cs">
       <DependentUpon>ventas.aspx</DependentUpon>

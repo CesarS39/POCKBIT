@@ -1,15 +1,74 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
 using System.Data.SqlClient;
-using System.Linq;
+using System.IO;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+using ClosedXML.Excel;
 
 namespace POCKBIT_v2.Paginas
 {
     public partial class compras : System.Web.UI.Page
     {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if (!IsPostBack)
+            {
+                LlenarDropDownLists();
+            }
+            if (Session["TwoFactorVerified"] == null || !(bool)Session["TwoFactorVerified"])
+            {
+                Response.Redirect("~/Account/Login");
+            }
+        }
+
+        protected void btnExportarExcel_Click(object sender, EventArgs e)
+        {
+            DataTable dt = GetAllCompras();
+            using (XLWorkbook wb = new XLWorkbook())
+            {
+                var ws = wb.Worksheets.Add(dt, "Compras");
+
+                // Aplicar formato del encabezado
+                var headerRow = ws.Row(1);
+                headerRow.Style.Font.Bold = true;
+                headerRow.Style.Fill.BackgroundColor = XLColor.AirForceBlue;
+                headerRow.Style.Font.FontColor = XLColor.White;
+
+                Response.Clear();
+                Response.Buffer = true;
+                Response.Charset = "";
+                Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                Response.AddHeader("content-disposition", "attachment;filename=Compras.xlsx");
+                using (MemoryStream memoryStream = new MemoryStream())
+                {
+                    wb.SaveAs(memoryStream);
+                    memoryStream.WriteTo(Response.OutputStream);
+                    Response.Flush();
+                    Response.End();
+                }
+            }
+        }
+
+        private DataTable GetAllCompras()
+        {
+            DataTable dt = new DataTable();
+            using (SqlConnection conexion = new SqlConnection(Get_ConnectionString()))
+            {
+                string query = "SELECT id_compra, codigo_de_barras, numero_de_lote, nombre, laboratorio, cantidad, costo, costo_total, fecha_caducidad, fecha_de_entrada, realizado_por FROM ViewCompra ORDER BY id_compra DESC";
+                using (SqlCommand cmd = new SqlCommand(query, conexion))
+                {
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dt);
+                    }
+                }
+            }
+            return dt;
+        }
+
         public void BorrarTxt()
         {
             txtCantidadC.Text = "";
@@ -20,16 +79,29 @@ namespace POCKBIT_v2.Paginas
 
         public string Get_ConnectionString()
         {
-            string SQLServer_Connection_String = "Server=tcp:pockbitv3.database.windows.net,1433;Initial Catalog=PockbitBDv2;Persist Security Info=False;User ID=PockbitSuperAdmin77;Password=5#Xw1Rz!m8Q@eL9zD7kT&f3V;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
-            return SQLServer_Connection_String;
+            return ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
         }
 
-        protected void Page_Load(object sender, EventArgs e)
+        private void MostrarMensaje(string mensaje, string tipo)
         {
-            if (!IsPostBack)
-            {
-                LlenarDropDownLists();
-            }
+            string alertType;
+            if (tipo == "success")
+                alertType = "alert-success";
+            else if (tipo == "info")
+                alertType = "alert-info";
+            else if (tipo == "warning")
+                alertType = "alert-warning";
+            else if (tipo == "danger")
+                alertType = "alert-danger";
+            else
+                alertType = "alert-primary";
+
+            string alertHtml = $@"
+                <div class='alert {alertType} alert-dismissible fade show' role='alert'>
+                    {mensaje}
+                    <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
+                </div>";
+            ltlAlert.Text = alertHtml;
         }
 
         protected void LlenarDropDownLists()
@@ -46,58 +118,32 @@ namespace POCKBIT_v2.Paginas
                 using (SqlConnection conexion = new SqlConnection(Get_ConnectionString()))
                 {
                     conexion.Open();
-                    int id_medicamento = int.Parse(ddlCodigoB.SelectedValue);
-                    int id_lote = int.Parse(ddlLote.SelectedValue);
-                    int cantidad = int.Parse(txtCantidadC.Text);
-                    int id_proveedor = 1; // Puedes ajustar este valor según tu lógica
-                    string realizado_por = HttpContext.Current.User.Identity.Name;
-                    DateTime fecha_de_entrada = DateTime.Now; // Asignar la fecha actual a una variable
-
-                    // Sumar cantidad en la tabla lote donde id_lote = @id_lote
-                    using (SqlCommand cmdUpdateLote = new SqlCommand("UPDATE lote SET cantidad = cantidad + @cantidad WHERE id_lote = @id_lote", conexion))
+                    using (SqlCommand cmd = new SqlCommand("sp_InsertarCompra", conexion))
                     {
-                        cmdUpdateLote.Parameters.AddWithValue("@id_lote", id_lote);
-                        cmdUpdateLote.Parameters.AddWithValue("@cantidad", cantidad);
-                        cmdUpdateLote.ExecuteNonQuery();
-                    }
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@id_lote", int.Parse(ddlLote.SelectedValue));
+                        cmd.Parameters.AddWithValue("@cantidad", int.Parse(txtCantidadC.Text));
+                        cmd.Parameters.AddWithValue("@realizado_por", HttpContext.Current.User.Identity.Name);
+                        cmd.Parameters.AddWithValue("@fecha_de_entrada", DateTime.Now);
 
-                    // Obtener el costo del medicamento relacionado con el lote
-                    float costo = 0;
-                    using (SqlCommand cmdGetCosto = new SqlCommand("SELECT m.costo FROM lote l INNER JOIN medicamento m ON l.id_medicamento = m.id_medicamento WHERE l.id_lote = @id_lote", conexion))
-                    {
-                        cmdGetCosto.Parameters.AddWithValue("@id_lote", id_lote);
-                        using (SqlDataReader reader = cmdGetCosto.ExecuteReader())
+                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        if (rowsAffected > 0)
                         {
-                            if (reader.Read())
-                            {
-                                costo = Convert.ToSingle(reader["costo"]); // Convertir el valor a float
-                            }
+                            MostrarMensaje("Compra registrada correctamente.", "success");
+                        }
+                        else
+                        {
+                            MostrarMensaje("No se registró la compra.", "warning");
                         }
                     }
-
-                    // Calcular el costo total
-                    float costo_total = cantidad * costo;
-
-                    // Insertar un nuevo registro en la tabla compra
-                    using (SqlCommand cmdInsertCompra = new SqlCommand("INSERT INTO compra (id_lote, cantidad, costo_total, fecha_de_entrada, id_proveedor, realizado_por) VALUES (@id_lote, @cantidad, @costo_total, @fecha_de_entrada, @id_proveedor, @realizado_por)", conexion))
-                    {
-                        cmdInsertCompra.Parameters.AddWithValue("@id_lote", id_lote);
-                        cmdInsertCompra.Parameters.AddWithValue("@cantidad", cantidad);
-                        cmdInsertCompra.Parameters.AddWithValue("@costo_total", costo_total);
-                        cmdInsertCompra.Parameters.AddWithValue("@realizado_por", realizado_por);
-                        cmdInsertCompra.Parameters.AddWithValue("@id_proveedor", id_proveedor);
-                        cmdInsertCompra.Parameters.AddWithValue("@fecha_de_entrada", fecha_de_entrada);
-                        cmdInsertCompra.ExecuteNonQuery();
-                    }
-
-                    conexion.Close();
                     BorrarTxt();
-                    LlenarDropDownLists(); // Actualizar dropdown lists
+                    LlenarDropDownLists();
                 }
             }
             catch (Exception ex)
             {
-                Response.Write("Error: " + ex.Message + "<br>" + ex.StackTrace);
+                MostrarMensaje("Error: " + ex.Message, "danger");
             }
         }
 
@@ -108,180 +154,33 @@ namespace POCKBIT_v2.Paginas
                 using (SqlConnection conexion = new SqlConnection(Get_ConnectionString()))
                 {
                     conexion.Open();
-
-                    int id_compra = int.Parse(lblId.Text);
-                    int id_proveedor = 1; // Puedes ajustar este valor según tu lógica
-                                          // Datos Nuevos
-                    int id_medicamento = int.Parse(ddlCodigoB.SelectedValue);
-                    int id_lote = int.Parse(ddlLote.SelectedValue);
-                    int cantidad = int.Parse(txtCantidadC.Text);
-                    string realizado_por = HttpContext.Current.User.Identity.Name;
-                    DateTime fecha_de_entrada = DateTime.Now;
-
-                    // Datos Antiguos
-                    int id_medicamento_anterior = 0;
-                    int id_lote_anterior = 0;
-                    int cantidadAnterior = 0;
-
-                    using (SqlCommand cmdSelect = new SqlCommand("SELECT c.cantidad, m.id_medicamento, l.id_lote FROM compra c INNER JOIN lote l ON c.id_lote = l.id_lote INNER JOIN medicamento m ON l.id_medicamento = m.id_medicamento WHERE c.id_compra = @id_compra", conexion))
+                    using (SqlCommand cmd = new SqlCommand("sp_ActualizarCompra", conexion))
                     {
-                        cmdSelect.Parameters.AddWithValue("@id_compra", id_compra);
-                        using (SqlDataReader reader = cmdSelect.ExecuteReader())
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@id_compra", int.Parse(lblId.Text));
+                        cmd.Parameters.AddWithValue("@id_lote", int.Parse(ddlLote.SelectedValue));
+                        cmd.Parameters.AddWithValue("@cantidad", int.Parse(txtCantidadC.Text));
+                        cmd.Parameters.AddWithValue("@realizado_por", HttpContext.Current.User.Identity.Name);
+                        cmd.Parameters.AddWithValue("@fecha_de_entrada", DateTime.Now);
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        if (rowsAffected > 0)
                         {
-                            if (reader.Read())
-                            {
-                                cantidadAnterior = reader.GetInt32(0);
-                                id_medicamento_anterior = reader.GetInt32(1);
-                                id_lote_anterior = reader.GetInt32(2);
-                            }
-                        }
-                    }
-
-                    // Calcular la diferencia
-                    int diferencia = cantidad - cantidadAnterior;
-
-                    if (id_medicamento == id_medicamento_anterior)
-                    {
-                        if (id_lote == id_lote_anterior)
-                        {
-                            // Actualizar la tabla lote
-                            using (SqlCommand cmdUpdateLote = new SqlCommand("UPDATE lote SET cantidad = cantidad + @diferencia WHERE id_lote = @id_lote", conexion))
-                            {
-                                cmdUpdateLote.Parameters.AddWithValue("@id_lote", id_lote);
-                                cmdUpdateLote.Parameters.AddWithValue("@diferencia", diferencia);
-                                cmdUpdateLote.ExecuteNonQuery();
-                            }
-
-                            // Obtener el costo del medicamento relacionado con el lote
-                            float costo = 0;
-                            using (SqlCommand cmdGetCosto = new SqlCommand("SELECT m.costo FROM lote l INNER JOIN medicamento m ON l.id_medicamento = m.id_medicamento WHERE l.id_lote = @id_lote", conexion))
-                            {
-                                cmdGetCosto.Parameters.AddWithValue("@id_lote", id_lote);
-                                using (SqlDataReader reader = cmdGetCosto.ExecuteReader())
-                                {
-                                    if (reader.Read())
-                                    {
-                                        costo = Convert.ToSingle(reader["costo"]);
-                                    }
-                                }
-                            }
-
-                            // Calcular el costo total y actualizar la tabla compra
-                            float costo_total = cantidad * costo;
-                            using (SqlCommand cmdUpdateCompra = new SqlCommand("UPDATE compra SET cantidad = @cantidad, fecha_de_entrada = @fecha_de_entrada, realizado_por = @realizado_por, costo_total = @costo_total WHERE id_compra = @id_compra", conexion))
-                            {
-                                cmdUpdateCompra.Parameters.AddWithValue("@id_compra", id_compra);
-                                cmdUpdateCompra.Parameters.AddWithValue("@cantidad", cantidad);
-                                cmdUpdateCompra.Parameters.AddWithValue("@fecha_de_entrada", fecha_de_entrada);
-                                cmdUpdateCompra.Parameters.AddWithValue("@realizado_por", realizado_por);
-                                cmdUpdateCompra.Parameters.AddWithValue("@costo_total", costo_total);
-                                cmdUpdateCompra.ExecuteNonQuery();
-                            }
+                            MostrarMensaje("Compra modificada correctamente.", "success");
                         }
                         else
                         {
-                            // Restar cantidadAnterior en la tabla lote donde id_lote = id_lote_anterior
-                            using (SqlCommand cmdRestarCantidad = new SqlCommand("UPDATE lote SET cantidad = cantidad - @cantidadAnterior WHERE id_lote = @id_lote_anterior", conexion))
-                            {
-                                cmdRestarCantidad.Parameters.AddWithValue("@cantidadAnterior", cantidadAnterior);
-                                cmdRestarCantidad.Parameters.AddWithValue("@id_lote_anterior", id_lote_anterior);
-                                cmdRestarCantidad.ExecuteNonQuery();
-                            }
-
-                            // Sumar cantidad en la tabla lote donde id_lote = @id_lote
-                            using (SqlCommand cmdSumarCantidad = new SqlCommand("UPDATE lote SET cantidad = cantidad + @cantidad WHERE id_lote = @id_lote", conexion))
-                            {
-                                cmdSumarCantidad.Parameters.AddWithValue("@cantidad", cantidad);
-                                cmdSumarCantidad.Parameters.AddWithValue("@id_lote", id_lote);
-                                cmdSumarCantidad.ExecuteNonQuery();
-                            }
-
-                            // Obtener el costo del medicamento relacionado con el lote
-                            float costo = 0;
-                            using (SqlCommand cmdGetCosto = new SqlCommand("SELECT m.costo FROM lote l INNER JOIN medicamento m ON l.id_medicamento = m.id_medicamento WHERE l.id_lote = @id_lote", conexion))
-                            {
-                                cmdGetCosto.Parameters.AddWithValue("@id_lote", id_lote);
-                                using (SqlDataReader reader = cmdGetCosto.ExecuteReader())
-                                {
-                                    if (reader.Read())
-                                    {
-                                        costo = Convert.ToSingle(reader["costo"]);
-                                    }
-                                }
-                            }
-
-                            // Calcular el costo total
-                            float costo_total = cantidad * costo;
-
-                            // Actualizar la tabla compra
-                            using (SqlCommand cmdUpdateCompra = new SqlCommand("UPDATE compra SET cantidad = @cantidad, fecha_de_entrada = @fecha_de_entrada, realizado_por = @realizado_por, costo_total = @costo_total, id_lote = @id_lote WHERE id_compra = @id_compra", conexion))
-                            {
-                                cmdUpdateCompra.Parameters.AddWithValue("@id_compra", id_compra);
-                                cmdUpdateCompra.Parameters.AddWithValue("@id_lote", id_lote);
-                                cmdUpdateCompra.Parameters.AddWithValue("@cantidad", cantidad);
-                                cmdUpdateCompra.Parameters.AddWithValue("@fecha_de_entrada", fecha_de_entrada);
-                                cmdUpdateCompra.Parameters.AddWithValue("@realizado_por", realizado_por);
-                                cmdUpdateCompra.Parameters.AddWithValue("@costo_total", costo_total);
-                                cmdUpdateCompra.ExecuteNonQuery();
-                            }
+                            MostrarMensaje("No se modificó la compra.", "warning");
                         }
                     }
-                    else
-                    {
-                        // Restar cantidadAnterior en la tabla lote donde id_lote = id_lote_anterior y id_medicamento = id_medicamento_anterior
-                        using (SqlCommand cmdRestarCantidad = new SqlCommand("UPDATE lote SET cantidad = cantidad - @cantidadAnterior WHERE id_lote = @id_lote_anterior AND id_medicamento = @id_medicamento_anterior", conexion))
-                        {
-                            cmdRestarCantidad.Parameters.AddWithValue("@cantidadAnterior", cantidadAnterior);
-                            cmdRestarCantidad.Parameters.AddWithValue("@id_lote_anterior", id_lote_anterior);
-                            cmdRestarCantidad.Parameters.AddWithValue("@id_medicamento_anterior", id_medicamento_anterior);
-                            cmdRestarCantidad.ExecuteNonQuery();
-                        }
-
-                        // Sumar cantidad en la tabla lote donde id_lote = @id_lote y id_medicamento = @id_medicamento
-                        using (SqlCommand cmdSumarCantidad = new SqlCommand("UPDATE lote SET cantidad = cantidad + @cantidad WHERE id_lote = @id_lote AND id_medicamento = @id_medicamento", conexion))
-                        {
-                            cmdSumarCantidad.Parameters.AddWithValue("@cantidad", cantidad);
-                            cmdSumarCantidad.Parameters.AddWithValue("@id_lote", id_lote);
-                            cmdSumarCantidad.Parameters.AddWithValue("@id_medicamento", id_medicamento);
-                            cmdSumarCantidad.ExecuteNonQuery();
-                        }
-
-                        // Obtener el costo del medicamento relacionado con el lote
-                        float costo = 0;
-                        using (SqlCommand cmdGetCosto = new SqlCommand("SELECT m.costo FROM lote l INNER JOIN medicamento m ON l.id_medicamento = m.id_medicamento WHERE l.id_lote = @id_lote", conexion))
-                        {
-                            cmdGetCosto.Parameters.AddWithValue("@id_lote", id_lote);
-                            using (SqlDataReader reader = cmdGetCosto.ExecuteReader())
-                            {
-                                if (reader.Read())
-                                {
-                                    costo = Convert.ToSingle(reader["costo"]);
-                                }
-                            }
-                        }
-
-                        // Calcular el costo total y actualizar la tabla compra
-                        float costo_total = cantidad * costo;
-                        using (SqlCommand cmdUpdateCompra = new SqlCommand("UPDATE compra SET cantidad = @cantidad, fecha_de_entrada = @fecha_de_entrada, realizado_por = @realizado_por, costo_total = @costo_total, id_lote = @id_lote WHERE id_compra = @id_compra", conexion))
-                        {
-                            cmdUpdateCompra.Parameters.AddWithValue("@id_compra", id_compra);
-                            cmdUpdateCompra.Parameters.AddWithValue("@id_lote", id_lote);
-                            cmdUpdateCompra.Parameters.AddWithValue("@cantidad", cantidad);
-                            cmdUpdateCompra.Parameters.AddWithValue("@fecha_de_entrada", fecha_de_entrada);
-                            cmdUpdateCompra.Parameters.AddWithValue("@realizado_por", realizado_por);
-                            cmdUpdateCompra.Parameters.AddWithValue("@costo_total", costo_total);
-                            cmdUpdateCompra.ExecuteNonQuery();
-                        }
-                    }
-
-                    conexion.Close();
                     BorrarTxt();
-                    LlenarDropDownLists(); // Actualizar dropdown lists
+                    LlenarDropDownLists();
                 }
             }
             catch (Exception ex)
             {
-                Response.Write("Error: " + ex.Message + "<br>" + ex.StackTrace);
+                MostrarMensaje("Error: " + ex.Message, "danger");
             }
         }
 
@@ -292,38 +191,49 @@ namespace POCKBIT_v2.Paginas
                 using (SqlConnection conexion = new SqlConnection(Get_ConnectionString()))
                 {
                     conexion.Open();
-                    int id_compra = int.Parse(lblId.Text); // ID de la compra a eliminar
-                    int id_lote = int.Parse(ddlLote.SelectedValue);
-                    int cantidad = int.Parse(txtCantidadC.Text);
-
-                    // Eliminar el registro de la tabla compra
-                    using (SqlCommand cmdDeleteCompra = new SqlCommand("DELETE FROM compra WHERE id_compra = @id_compra", conexion))
+                    using (SqlCommand cmd = new SqlCommand("sp_EliminarCompra", conexion))
                     {
-                        cmdDeleteCompra.Parameters.AddWithValue("@id_compra", id_compra);
-                        cmdDeleteCompra.ExecuteNonQuery();
-                    }
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@id_compra", int.Parse(lblId.Text));
 
-                    // Restar cantidad en la tabla lote donde id_lote = @id_lote
-                    using (SqlCommand cmdUpdateLote = new SqlCommand("UPDATE lote SET cantidad = cantidad - @cantidad WHERE id_lote = @id_lote", conexion))
-                    {
-                        cmdUpdateLote.Parameters.AddWithValue("@id_lote", id_lote);
-                        cmdUpdateLote.Parameters.AddWithValue("@cantidad", cantidad);
-                        cmdUpdateLote.ExecuteNonQuery();
+                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        if (rowsAffected > 0)
+                        {
+                            MostrarMensaje("Compra eliminada correctamente.", "success");
+                        }
+                        else
+                        {
+                            MostrarMensaje("No se eliminó la compra.", "warning");
+                        }
                     }
-                    conexion.Close();
                     BorrarTxt();
-                    LlenarDropDownLists(); // Actualizar dropdown lists
+                    LlenarDropDownLists();
                 }
             }
             catch (Exception ex)
             {
-                Response.Write("Error: " + ex.Message + "<br>" + ex.StackTrace);
+                MostrarMensaje("Error: " + ex.Message, "danger");
             }
         }
+
         protected void GVCompras_SelectedIndexChanged(object sender, EventArgs e)
         {
-            lblId.Text = GVCompras.SelectedRow.Cells[1].Text;
-            txtCantidadC.Text = GVCompras.SelectedRow.Cells[7].Text;
+            lblId.Text = GVCompras.SelectedRow.Cells[1].Text.Trim();
+            txtCantidadC.Text = GVCompras.SelectedRow.Cells[7].Text.Trim();
+        }
+
+        protected void GVCompras_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType == DataControlRowType.DataRow)
+            {
+                Button selectButton = e.Row.Cells[0].Controls[0] as Button;
+                if (selectButton != null)
+                {
+                    selectButton.CssClass = "btn btn-info";
+                }
+            }
         }
     }
 }
+

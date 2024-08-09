@@ -1,15 +1,65 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
 using System.Data.SqlClient;
-using System.Linq;
-using System.Web;
+using System.IO;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+using ClosedXML.Excel;
 
 namespace POCKBIT_v2.Paginas
 {
     public partial class medicamentos : System.Web.UI.Page
     {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if (Session["TwoFactorVerified"] == null || !(bool)Session["TwoFactorVerified"])
+            {
+                Response.Redirect("~/Account/Login");
+            }
+        }
+
+        protected void btnExportarExcel_Click(object sender, EventArgs e)
+        {
+            DataTable dt = GetAllMedicamentos();
+            using (XLWorkbook wb = new XLWorkbook())
+            {
+                var ws = wb.Worksheets.Add(dt, "Medicamentos");
+                var headerRow = ws.Row(1);
+                headerRow.Style.Font.Bold = true;
+                headerRow.Style.Fill.BackgroundColor = XLColor.AirForceBlue;
+                headerRow.Style.Font.FontColor = XLColor.White;
+
+                Response.Clear();
+                Response.Buffer = true;
+                Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                Response.AddHeader("content-disposition", "attachment;filename=Medicamentos.xlsx");
+                using (MemoryStream memoryStream = new MemoryStream())
+                {
+                    wb.SaveAs(memoryStream);
+                    memoryStream.WriteTo(Response.OutputStream);
+                    Response.Flush();
+                    Response.End();
+                }
+            }
+        }
+
+        private DataTable GetAllMedicamentos()
+        {
+            DataTable dt = new DataTable();
+            using (SqlConnection conexion = new SqlConnection(Get_ConnectionString()))
+            {
+                using (SqlCommand cmd = new SqlCommand("SELECT id_medicamento, codigo_de_barras, nombre, descripcion, nombre_laboratorio, costo, precio_venta, precio_maximo_publico, cantidad_total, fecha_de_registro, activo FROM ViewMedicamento ORDER BY id_medicamento DESC", conexion))
+                {
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dt);
+                    }
+                }
+            }
+            return dt;
+        }
+
         public void BorrarTxt()
         {
             txtNombreC.Text = "";
@@ -24,73 +74,79 @@ namespace POCKBIT_v2.Paginas
 
         public string Get_ConnectionString()
         {
-            string SQLServer_Connection_String = "Server=tcp:pockbitv3.database.windows.net,1433;Initial Catalog=PockbitBDv2;Persist Security Info=False;User ID=PockbitSuperAdmin77;Password=5#Xw1Rz!m8Q@eL9zD7kT&f3V;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
-            return SQLServer_Connection_String;
+            return ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
         }
 
-        protected void Page_Load(object sender, EventArgs e)
+        private void MostrarMensaje(string mensaje, string tipo)
         {
+            string alertType;
+            switch (tipo)
+            {
+                case "success":
+                    alertType = "alert-success";
+                    break;
+                case "info":
+                    alertType = "alert-info";
+                    break;
+                case "warning":
+                    alertType = "alert-warning";
+                    break;
+                case "danger":
+                    alertType = "alert-danger";
+                    break;
+                default:
+                    alertType = "alert-primary";
+                    break;
+            }
 
+            ltlAlert.Text = $@"
+                <div class='alert {alertType} alert-dismissible fade show' role='alert'>
+                    {mensaje}
+                    <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
+                </div>";
         }
 
         protected void btnInsertar_Click(object sender, EventArgs e)
         {
             try
             {
-                string sql;
                 using (SqlConnection conexion = new SqlConnection(Get_ConnectionString()))
                 {
                     conexion.Open();
-
-                    // Validar que no exista un medicamento con el mismo código de barras
-                    string validarCodigo = "SELECT COUNT(*) FROM medicamento WHERE codigo_de_barras = @codigo_de_barras";
-                    using (SqlCommand validarCmd = new SqlCommand(validarCodigo, conexion))
+                    using (SqlCommand cmd = new SqlCommand("sp_InsertarMedicamento", conexion))
                     {
-                        validarCmd.Parameters.AddWithValue("@codigo_de_barras", txtCodigoB.Text);
-                        int count = (int)validarCmd.ExecuteScalar();
-                        if (count > 0)
-                        {
-                            Response.Write("Error: Ya existe un medicamento con el mismo código de barras.");
-                            return;
-                        }
-                    }
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@nombre", txtNombreC.Text);
+                        cmd.Parameters.AddWithValue("@descripcion", txtDescripcion.Text);
+                        cmd.Parameters.AddWithValue("@costo", txtCosto.Text);
+                        cmd.Parameters.AddWithValue("@precio_maximo_publico", txtPrecioP.Text);
+                        cmd.Parameters.AddWithValue("@precio_venta", txtPrecioV.Text);
+                        cmd.Parameters.AddWithValue("@codigo_de_barras", txtCodigoB.Text);
+                        cmd.Parameters.AddWithValue("@id_laboratorio", ddlLaboratorio.SelectedValue);
+                        cmd.Parameters.AddWithValue("@fecha_de_registro", DateTime.Now);
+                        cmd.Parameters.AddWithValue("@activo", ddlEstado.SelectedValue);
 
-                    sql = @"INSERT INTO medicamento 
-                            (nombre, descripcion, costo, precio_maximo_publico, precio_venta, codigo_de_barras, id_laboratorio, fecha_de_registro, activo) 
-                            VALUES 
-                            (@nombre, @descripcion, @costo, @precio_maximo_publico, @precio_venta, @codigo_de_barras, @id_laboratorio, @fecha_de_registro, @activo)";
-
-                    using (SqlCommand mycmd = new SqlCommand(sql, conexion))
-                    {
-                        mycmd.Parameters.AddWithValue("@nombre", txtNombreC.Text);
-                        mycmd.Parameters.AddWithValue("@descripcion", txtDescripcion.Text);
-                        mycmd.Parameters.AddWithValue("@costo", txtCosto.Text);
-                        mycmd.Parameters.AddWithValue("@precio_maximo_publico", txtPrecioP.Text);
-                        mycmd.Parameters.AddWithValue("@precio_venta", txtPrecioV.Text);
-                        mycmd.Parameters.AddWithValue("@codigo_de_barras", txtCodigoB.Text);
-                        mycmd.Parameters.AddWithValue("@id_laboratorio", ddlLaboratorio.SelectedValue);
-                        mycmd.Parameters.AddWithValue("@fecha_de_registro", DateTime.Now);
-                        mycmd.Parameters.AddWithValue("@activo", ddlEstado.SelectedValue);
-
-                        int rowsAffected = mycmd.ExecuteNonQuery();
-
+                        int rowsAffected = cmd.ExecuteNonQuery();
                         if (rowsAffected > 0)
                         {
-                            Response.Write("Medicamento insertado correctamente.");
+                            MostrarMensaje("Medicamento insertado correctamente.", "success");
                         }
                         else
                         {
-                            Response.Write("No se insertó el Medicamento.");
+                            MostrarMensaje("No se insertó el medicamento.", "warning");
                         }
                     }
-                    conexion.Close();
                     BorrarTxt();
                     GVMedicamentos.DataBind();
                 }
             }
+            catch (SqlException ex) when (ex.Number == 50000)
+            {
+                MostrarMensaje("Error: Ya existe un medicamento con el mismo código de barras.", "warning");
+            }
             catch (Exception ex)
             {
-                Response.Write("Error: " + ex.Message);
+                MostrarMensaje("Error: " + ex.Message, "danger");
             }
         }
 
@@ -98,61 +154,43 @@ namespace POCKBIT_v2.Paginas
         {
             try
             {
-                string sql;
                 using (SqlConnection conexion = new SqlConnection(Get_ConnectionString()))
                 {
                     conexion.Open();
-
-                    // Validar que no exista otro medicamento con el mismo código de barras
-                    string validarCodigo = "SELECT COUNT(*) FROM medicamento WHERE codigo_de_barras = @codigo_de_barras AND id_medicamento != @id_medicamento";
-                    using (SqlCommand validarCmd = new SqlCommand(validarCodigo, conexion))
+                    using (SqlCommand cmd = new SqlCommand("sp_ActualizarMedicamento", conexion))
                     {
-                        validarCmd.Parameters.AddWithValue("@codigo_de_barras", txtCodigoB.Text);
-                        validarCmd.Parameters.AddWithValue("@id_medicamento", lblId.Text);
-                        int count = (int)validarCmd.ExecuteScalar();
-                        if (count > 0)
-                        {
-                            Response.Write("Error: Ya existe otro medicamento con el mismo código de barras.");
-                            return;
-                        }
-                    }
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@id_medicamento", lblId.Text);
+                        cmd.Parameters.AddWithValue("@nombre", txtNombreC.Text);
+                        cmd.Parameters.AddWithValue("@descripcion", txtDescripcion.Text);
+                        cmd.Parameters.AddWithValue("@costo", txtCosto.Text);
+                        cmd.Parameters.AddWithValue("@precio_maximo_publico", txtPrecioP.Text);
+                        cmd.Parameters.AddWithValue("@precio_venta", txtPrecioV.Text);
+                        cmd.Parameters.AddWithValue("@codigo_de_barras", txtCodigoB.Text);
+                        cmd.Parameters.AddWithValue("@id_laboratorio", ddlLaboratorio.SelectedValue);
+                        cmd.Parameters.AddWithValue("@activo", ddlEstado.SelectedValue);
 
-                    sql = @"UPDATE medicamento 
-                            SET nombre = @nombre, descripcion = @descripcion, costo = @costo, precio_maximo_publico = @precio_maximo_publico, 
-                                precio_venta = @precio_venta, codigo_de_barras = @codigo_de_barras, id_laboratorio = @id_laboratorio, activo = @activo
-                            WHERE id_medicamento = @id_medicamento";
-
-                    using (SqlCommand mycmd = new SqlCommand(sql, conexion))
-                    {
-                        mycmd.Parameters.AddWithValue("@nombre", txtNombreC.Text);
-                        mycmd.Parameters.AddWithValue("@descripcion", txtDescripcion.Text);
-                        mycmd.Parameters.AddWithValue("@costo", txtCosto.Text);
-                        mycmd.Parameters.AddWithValue("@precio_maximo_publico", txtPrecioP.Text);
-                        mycmd.Parameters.AddWithValue("@precio_venta", txtPrecioV.Text);
-                        mycmd.Parameters.AddWithValue("@codigo_de_barras", txtCodigoB.Text);
-                        mycmd.Parameters.AddWithValue("@id_laboratorio", ddlLaboratorio.SelectedValue);
-                        mycmd.Parameters.AddWithValue("@activo", ddlEstado.SelectedValue);
-                        mycmd.Parameters.AddWithValue("@id_medicamento", lblId.Text);
-
-                        int rowsAffected = mycmd.ExecuteNonQuery();
-
+                        int rowsAffected = cmd.ExecuteNonQuery();
                         if (rowsAffected > 0)
                         {
-                            Response.Write("Medicamento modificado correctamente.");
+                            MostrarMensaje("Medicamento modificado correctamente.", "success");
                         }
                         else
                         {
-                            Response.Write("No se modificó el Medicamento.");
+                            MostrarMensaje("No se modificó el medicamento.", "warning");
                         }
                     }
-                    conexion.Close();
                     BorrarTxt();
                     GVMedicamentos.DataBind();
                 }
             }
+            catch (SqlException ex) when (ex.Number == 50000)
+            {
+                MostrarMensaje("Error: Ya existe otro medicamento con el mismo código de barras.", "warning");
+            }
             catch (Exception ex)
             {
-                Response.Write("Error: " + ex.Message);
+                MostrarMensaje("Error: " + ex.Message, "danger");
             }
         }
 
@@ -160,48 +198,50 @@ namespace POCKBIT_v2.Paginas
         {
             try
             {
-                string sql;
                 using (SqlConnection conexion = new SqlConnection(Get_ConnectionString()))
                 {
                     conexion.Open();
-                    sql = "UPDATE medicamento SET activo = 0 WHERE id_medicamento = @id_medicamento";
-
-                    using (SqlCommand mycmd = new SqlCommand(sql, conexion))
+                    using (SqlCommand cmd = new SqlCommand("sp_EliminarMedicamento", conexion))
                     {
-                        mycmd.Parameters.AddWithValue("@id_medicamento", lblId.Text);
-
-                        int rowsAffected = mycmd.ExecuteNonQuery();
-
-                        if (rowsAffected > 0)
-                        {
-                            Response.Write("Medicamento marcado como inactivo correctamente.");
-                        }
-                        else
-                        {
-                            Response.Write("No se pudo marcar el Medicamento como inactivo.");
-                        }
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@id_medicamento", lblId.Text);
+                        cmd.ExecuteNonQuery();
                     }
-                    conexion.Close();
+                    MostrarMensaje("Medicamento marcado como inactivo correctamente.", "success");
                     BorrarTxt();
                     GVMedicamentos.DataBind();
                 }
             }
             catch (Exception ex)
             {
-                Response.Write("Error: " + ex.Message);
+                MostrarMensaje("Error: " + ex.Message, "danger");
             }
         }
 
         protected void GVMedicamentos_SelectedIndexChanged1(object sender, EventArgs e)
         {
-            lblId.Text = GVMedicamentos.SelectedRow.Cells[1].Text.ToString();
-            txtNombreC.Text = GVMedicamentos.SelectedRow.Cells[2].Text.ToString();
-            txtDescripcion.Text = GVMedicamentos.SelectedRow.Cells[3].Text.ToString();
-            txtCosto.Text = GVMedicamentos.SelectedRow.Cells[4].Text.ToString();
-            txtPrecioP.Text = GVMedicamentos.SelectedRow.Cells[5].Text.ToString();
-            txtPrecioV.Text = GVMedicamentos.SelectedRow.Cells[6].Text.ToString();
-            txtCodigoB.Text = GVMedicamentos.SelectedRow.Cells[7].Text.ToString();
-            ddlEstado.SelectedValue = GVMedicamentos.SelectedRow.Cells[10].Text.ToString() == "Activo" ? "1" : "0";
+            GridViewRow row = GVMedicamentos.SelectedRow;
+
+            lblId.Text = row.Cells[1].Text.Trim();
+            txtCodigoB.Text = row.Cells[2].Text.Trim();
+            txtNombreC.Text = row.Cells[3].Text.Trim();
+            txtDescripcion.Text = row.Cells[4].Text.Trim();
+            txtCosto.Text = row.Cells[6].Text.Replace("$", "").Trim();
+            txtPrecioV.Text = row.Cells[7].Text.Replace("$", "").Trim();
+            txtPrecioP.Text = row.Cells[8].Text.Replace("$", "").Trim();
+            ddlEstado.SelectedValue = row.Cells[10].Text.Trim() == "True" ? "1" : "0";
+        }
+
+        protected void GVMedicamentos_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType == DataControlRowType.DataRow)
+            {
+                Button selectButton = e.Row.Cells[0].Controls[0] as Button;
+                if (selectButton != null)
+                {
+                    selectButton.CssClass = "btn btn-info";
+                }
+            }
         }
     }
 }

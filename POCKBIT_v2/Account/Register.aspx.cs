@@ -19,15 +19,13 @@ namespace POCKBIT_v2.Account
             IdentityResult result = manager.Create(user, Password.Text);
             if (result.Succeeded)
             {
-                // Para obtener más información sobre cómo habilitar la confirmación de cuentas y el restablecimiento de contraseña, visite https://go.microsoft.com/fwlink/?LinkID=320771
-                //string code = manager.GenerateEmailConfirmationToken(user.Id);
-                //string callbackUrl = IdentityHelper.GetUserConfirmationRedirectUrl(code, user.Id, Request);
-                //manager.SendEmail(user.Id, "Confirmar cuenta", "Para confirmar la cuenta, haga clic <a href=\"" + callbackUrl + "\">aquí</a>.");
+                // Inicia sesión automáticamente al usuario
+                signInManager.SignIn(user, isPersistent: false, rememberBrowser: false);
 
-                signInManager.SignIn( user, isPersistent: false, rememberBrowser: false);
-                IdentityHelper.RedirectToReturnUrl(Request.QueryString["ReturnUrl"], Response);
+                // Redirigir a la página de configuración de verificación de dos factores
+                Response.Redirect("~/Account/TwoFactorSetup.aspx");
             }
-            else 
+            else
             {
                 ErrorMessage.Text = result.Errors.FirstOrDefault();
             }

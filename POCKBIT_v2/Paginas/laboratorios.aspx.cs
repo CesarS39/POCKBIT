@@ -1,67 +1,53 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
 using System.Data.SqlClient;
-using System.Linq;
-using System.Web;
+using System.IO;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+using ClosedXML.Excel;
 
 namespace POCKBIT_v2.Paginas
 {
     public partial class laboratorios : System.Web.UI.Page
     {
-        public void BorrarTxt()
-        {
-            txtNombreL.Text = "";
-            lblId.Text = "";
-            ddlEstado.SelectedIndex = 1;
-        }
-
-        public string Get_ConnectionString()
-        {
-            string SQLServer_Connection_String = "Server=tcp:pockbitv3.database.windows.net,1433;Initial Catalog=PockbitBDv2;Persist Security Info=False;User ID=PockbitSuperAdmin77;Password=5#Xw1Rz!m8Q@eL9zD7kT&f3V;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;";
-            return SQLServer_Connection_String;
-        }
+        private string ConnectionString => ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
 
         protected void Page_Load(object sender, EventArgs e)
         {
-
+            if (Session["TwoFactorVerified"] == null || !(bool)Session["TwoFactorVerified"])
+            {
+                Response.Redirect("~/Account/Login");
+            }
         }
 
         protected void btnInsertar_Click(object sender, EventArgs e)
         {
             try
             {
-                string sql;
-                using (SqlConnection conexion = new SqlConnection(Get_ConnectionString()))
+                using (SqlConnection conexion = new SqlConnection(ConnectionString))
                 {
                     conexion.Open();
-                    sql = "INSERT INTO laboratorio (nombre, activo) VALUES (@nombre, @activo)";
-                    using (SqlCommand mycmd = new SqlCommand(sql, conexion))
+                    using (SqlCommand cmd = new SqlCommand("sp_InsertarLaboratorio", conexion))
                     {
-                        mycmd.Parameters.AddWithValue("@nombre", txtNombreL.Text);
-                        mycmd.Parameters.AddWithValue("@activo", ddlEstado.SelectedValue);
-
-                        int rowsAffected = mycmd.ExecuteNonQuery();
-
-                        if (rowsAffected > 0)
-                        {
-                            Response.Write("Laboratorio insertado correctamente.");
-                        }
-                        else
-                        {
-                            Response.Write("No se insertó el laboratorio.");
-                        }
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@nombre", txtNombreL.Text);
+                        cmd.Parameters.AddWithValue("@activo", ddlEstado.SelectedValue);
+                        cmd.ExecuteNonQuery();
                     }
-                    conexion.Close();
+                    MostrarMensaje("Laboratorio insertado correctamente.", "success");
                     BorrarTxt();
                     GRVLaboratorios.DataBind();
                     SqlDataSourceLaboratorios.DataBind();
                 }
             }
+            catch (SqlException ex) when (ex.Number == 50000)
+            {
+                MostrarMensaje("El laboratorio ya existe y está activo.", "warning");
+            }
             catch (Exception ex)
             {
-                Response.Write("Error: " + ex.Message);
+                MostrarMensaje("Error: " + ex.Message, "danger");
             }
         }
 
@@ -69,29 +55,18 @@ namespace POCKBIT_v2.Paginas
         {
             try
             {
-                string sql;
-                using (SqlConnection conexion = new SqlConnection(Get_ConnectionString()))
+                using (SqlConnection conexion = new SqlConnection(ConnectionString))
                 {
                     conexion.Open();
-                    sql = "UPDATE laboratorio SET nombre = @nombre, activo = @activo WHERE id_laboratorio = @id";
-                    using (SqlCommand mycmd = new SqlCommand(sql, conexion))
+                    using (SqlCommand cmd = new SqlCommand("sp_ActualizarLaboratorio", conexion))
                     {
-                        mycmd.Parameters.AddWithValue("@nombre", txtNombreL.Text);
-                        mycmd.Parameters.AddWithValue("@activo", ddlEstado.SelectedValue);
-                        mycmd.Parameters.AddWithValue("@id", lblId.Text);
-
-                        int rowsAffected = mycmd.ExecuteNonQuery();
-
-                        if (rowsAffected > 0)
-                        {
-                            Response.Write("Laboratorio modificado correctamente.");
-                        }
-                        else
-                        {
-                            Response.Write("No se modificó el laboratorio.");
-                        }
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@id", lblId.Text);
+                        cmd.Parameters.AddWithValue("@nombre", txtNombreL.Text);
+                        cmd.Parameters.AddWithValue("@activo", ddlEstado.SelectedValue);
+                        cmd.ExecuteNonQuery();
                     }
-                    conexion.Close();
+                    MostrarMensaje("Laboratorio modificado correctamente.", "success");
                     BorrarTxt();
                     GRVLaboratorios.DataBind();
                     SqlDataSourceLaboratorios.DataBind();
@@ -99,7 +74,7 @@ namespace POCKBIT_v2.Paginas
             }
             catch (Exception ex)
             {
-                Response.Write("Error: " + ex.Message);
+                MostrarMensaje("Error: " + ex.Message, "danger");
             }
         }
 
@@ -107,27 +82,16 @@ namespace POCKBIT_v2.Paginas
         {
             try
             {
-                string sql;
-                using (SqlConnection conexion = new SqlConnection(Get_ConnectionString()))
+                using (SqlConnection conexion = new SqlConnection(ConnectionString))
                 {
                     conexion.Open();
-                    sql = "UPDATE laboratorio SET activo = 0 WHERE id_laboratorio = @id";
-                    using (SqlCommand mycmd = new SqlCommand(sql, conexion))
+                    using (SqlCommand cmd = new SqlCommand("sp_EliminarLaboratorio", conexion))
                     {
-                        mycmd.Parameters.AddWithValue("@id", lblId.Text);
-
-                        int rowsAffected = mycmd.ExecuteNonQuery();
-
-                        if (rowsAffected > 0)
-                        {
-                            Response.Write("Laboratorio marcado como inactivo correctamente.");
-                        }
-                        else
-                        {
-                            Response.Write("No se pudo marcar el laboratorio como inactivo.");
-                        }
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@id", lblId.Text);
+                        cmd.ExecuteNonQuery();
                     }
-                    conexion.Close();
+                    MostrarMensaje("Laboratorio marcado como inactivo correctamente.", "success");
                     BorrarTxt();
                     GRVLaboratorios.DataBind();
                     SqlDataSourceLaboratorios.DataBind();
@@ -135,15 +99,123 @@ namespace POCKBIT_v2.Paginas
             }
             catch (Exception ex)
             {
-                Response.Write("Error: " + ex.Message);
+                MostrarMensaje("Error: " + ex.Message, "danger");
             }
+        }
+
+        protected void btnExportarExcel_Click(object sender, EventArgs e)
+        {
+            DataTable dt = GetAllLaboratorios();
+            using (XLWorkbook wb = new XLWorkbook())
+            {
+                var ws = wb.Worksheets.Add(dt, "Laboratorios");
+                var headerRow = ws.Row(1);
+                headerRow.Style.Font.Bold = true;
+                headerRow.Style.Fill.BackgroundColor = XLColor.AirForceBlue;
+                headerRow.Style.Font.FontColor = XLColor.White;
+
+                Response.Clear();
+                Response.Buffer = true;
+                Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                Response.AddHeader("content-disposition", "attachment;filename=Laboratorios.xlsx");
+                using (MemoryStream memoryStream = new MemoryStream())
+                {
+                    wb.SaveAs(memoryStream);
+                    memoryStream.WriteTo(Response.OutputStream);
+                    Response.Flush();
+                    Response.End();
+                }
+            }
+        }
+
+        private DataTable GetAllLaboratorios()
+        {
+            DataTable dt = new DataTable();
+            using (SqlConnection conexion = new SqlConnection(ConnectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("SELECT [id_laboratorio], [nombre], [activo] FROM [laboratorio]", conexion))
+                {
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dt);
+                    }
+                }
+            }
+            return dt;
         }
 
         protected void GRVLaboratorios_SelectedIndexChanged(object sender, EventArgs e)
         {
-            lblId.Text = GRVLaboratorios.SelectedRow.Cells[1].Text.ToString();
-            txtNombreL.Text = GRVLaboratorios.SelectedRow.Cells[2].Text.ToString();
-            ddlEstado.SelectedValue = GRVLaboratorios.SelectedRow.Cells[3].Text.ToString() == "Activo" ? "1" : "0";
+            lblId.Text = GRVLaboratorios.SelectedRow.Cells[1].Text;
+            txtNombreL.Text = GRVLaboratorios.SelectedRow.Cells[2].Text;
+            ddlEstado.SelectedValue = GRVLaboratorios.SelectedRow.Cells[3].Text == "Activo" ? "1" : "0";
+        }
+
+        protected void GRVLaboratorios_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType == DataControlRowType.DataRow)
+            {
+                Button selectButton = e.Row.Cells[0].Controls[0] as Button;
+                if (selectButton != null)
+                {
+                    selectButton.CssClass = "btn btn-info";
+                }
+            }
+        }
+
+        private DataTable GetDataTableFromGridView(GridView gv)
+        {
+            DataTable dt = new DataTable();
+            foreach (DataControlField column in gv.Columns)
+            {
+                dt.Columns.Add(column.HeaderText);
+            }
+            foreach (GridViewRow row in gv.Rows)
+            {
+                DataRow dr = dt.NewRow();
+                for (int i = 0; i < row.Cells.Count; i++)
+                {
+                    dr[i] = row.Cells[i].Text.Trim();
+                }
+                dt.Rows.Add(dr);
+            }
+            return dt;
+        }
+
+        private void MostrarMensaje(string mensaje, string tipo)
+        {
+            string alertType;
+            switch (tipo)
+            {
+                case "success":
+                    alertType = "alert-success";
+                    break;
+                case "info":
+                    alertType = "alert-info";
+                    break;
+                case "warning":
+                    alertType = "alert-warning";
+                    break;
+                case "danger":
+                    alertType = "alert-danger";
+                    break;
+                default:
+                    alertType = "alert-primary";
+                    break;
+            }
+
+            ltlAlert.Text = $@"
+        <div class='alert {alertType} alert-dismissible fade show' role='alert'>
+            {mensaje}
+            <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
+        </div>";
+        }
+
+        private void BorrarTxt()
+        {
+            txtNombreL.Text = "";
+            lblId.Text = "";
+            ddlEstado.SelectedIndex = 1;
         }
     }
 }

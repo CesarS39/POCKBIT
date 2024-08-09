@@ -15,6 +15,15 @@ namespace POCKBIT_v2.Account
     {
 
         /// <summary>
+        /// Control ltlAlert.
+        /// </summary>
+        /// <remarks>
+        /// Campo generado automáticamente.
+        /// Para modificarlo, mueva la declaración del campo del archivo del diseñador al archivo de código subyacente.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Literal ltlAlert;
+
+        /// <summary>
         /// Control ErrorMessage.
         /// </summary>
         /// <remarks>
@@ -58,15 +67,6 @@ namespace POCKBIT_v2.Account
         /// Para modificarlo, mueva la declaración del campo del archivo del diseñador al archivo de código subyacente.
         /// </remarks>
         protected global::System.Web.UI.WebControls.CheckBox RememberMe;
-
-        /// <summary>
-        /// Control RegisterHyperLink.
-        /// </summary>
-        /// <remarks>
-        /// Campo generado automáticamente.
-        /// Para modificarlo, mueva la declaración del campo del archivo del diseñador al archivo de código subyacente.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.HyperLink RegisterHyperLink;
 
         /// <summary>
         /// Control OpenAuthLogin.

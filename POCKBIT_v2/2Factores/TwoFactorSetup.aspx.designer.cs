@@ -7,47 +7,38 @@
 // </generado automáticamente>
 //------------------------------------------------------------------------------
 
-namespace POCKBIT_v2.Account
+namespace POCKBIT_v2._2Factores
 {
 
 
-    public partial class Manage
+    public partial class TwoFactorSetup
     {
 
         /// <summary>
-        /// Control ltlAlert.
+        /// Control qrCodeImageControl.
         /// </summary>
         /// <remarks>
         /// Campo generado automáticamente.
         /// Para modificarlo, mueva la declaración del campo del archivo del diseñador al archivo de código subyacente.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Literal ltlAlert;
+        protected global::System.Web.UI.WebControls.Image qrCodeImageControl;
 
         /// <summary>
-        /// Control successMessage.
+        /// Control txtCode.
         /// </summary>
         /// <remarks>
         /// Campo generado automáticamente.
         /// Para modificarlo, mueva la declaración del campo del archivo del diseñador al archivo de código subyacente.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.PlaceHolder successMessage;
+        protected global::System.Web.UI.WebControls.TextBox txtCode;
 
         /// <summary>
-        /// Control ChangePassword.
+        /// Control btnVerify.
         /// </summary>
         /// <remarks>
         /// Campo generado automáticamente.
         /// Para modificarlo, mueva la declaración del campo del archivo del diseñador al archivo de código subyacente.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.HyperLink ChangePassword;
-
-        /// <summary>
-        /// Control CreatePassword.
-        /// </summary>
-        /// <remarks>
-        /// Campo generado automáticamente.
-        /// Para modificarlo, mueva la declaración del campo del archivo del diseñador al archivo de código subyacente.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.HyperLink CreatePassword;
+        protected global::System.Web.UI.WebControls.Button btnVerify;
     }
 }

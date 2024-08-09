@@ -12,14 +12,18 @@ namespace POCKBIT_v2.Account
     {
         protected void Page_Load(object sender, EventArgs e)
         {
-            RegisterHyperLink.NavigateUrl = "Register";
             // Habilite esta opción una vez tenga la confirmación de la cuenta habilitada para la funcionalidad de restablecimiento de contraseña
             //ForgotPasswordHyperLink.NavigateUrl = "Forgot";
-            OpenAuthLogin.ReturnUrl = Request.QueryString["ReturnUrl"];
+
+            if (OpenAuthLogin != null)
+            {
+                OpenAuthLogin.ReturnUrl = Request.QueryString["ReturnUrl"];
+            }
+
             var returnUrl = HttpUtility.UrlEncode(Request.QueryString["ReturnUrl"]);
             if (!String.IsNullOrEmpty(returnUrl))
             {
-                RegisterHyperLink.NavigateUrl += "?ReturnUrl=" + returnUrl;
+                // Eliminar RegisterHyperLink.NavigateUrl += "?ReturnUrl=" + returnUrl;
             }
         }
 
@@ -56,6 +60,5 @@ namespace POCKBIT_v2.Account
                 }
             }
         }
-
     }
 }

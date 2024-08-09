@@ -265,25 +265,7 @@
     <Content Include="Account\VerifyPhoneNumber.aspx" />
     <Content Include="assets\css\common.css" />
     <Content Include="assets\css\demo.css" />
-    <Content Include="assets\img\avatars\1.png" />
-    <Content Include="assets\img\avatars\5.png" />
-    <Content Include="assets\img\avatars\6.png" />
-    <Content Include="assets\img\avatars\7.png" />
-    <Content Include="assets\img\backgrounds\18.jpg" />
     <Content Include="assets\img\backgrounds\pexels-koprivakart-3634855.jpg" />
-    <Content Include="assets\img\elements\1.jpg" />
-    <Content Include="assets\img\elements\11.jpg" />
-    <Content Include="assets\img\elements\12.jpg" />
-    <Content Include="assets\img\elements\13.jpg" />
-    <Content Include="assets\img\elements\17.jpg" />
-    <Content Include="assets\img\elements\18.jpg" />
-    <Content Include="assets\img\elements\19.jpg" />
-    <Content Include="assets\img\elements\2.jpg" />
-    <Content Include="assets\img\elements\20.jpg" />
-    <Content Include="assets\img\elements\3.jpg" />
-    <Content Include="assets\img\elements\4.jpg" />
-    <Content Include="assets\img\elements\5.jpg" />
-    <Content Include="assets\img\elements\7.jpg" />
     <Content Include="assets\img\favicon\favicon.ico" />
     <Content Include="assets\img\favicon\favicon2.ico" />
     <Content Include="assets\img\icons\brands\asana.png" />
@@ -302,15 +284,14 @@
     <Content Include="assets\img\icons\unicons\chart-success.png" />
     <Content Include="assets\img\icons\unicons\chart.png" />
     <Content Include="assets\img\icons\unicons\paypal.png" />
+    <Content Include="assets\img\icons\unicons\UilBox.png" />
+    <Content Include="assets\img\icons\unicons\UilPricetagAlt.png" />
+    <Content Include="assets\img\icons\unicons\UilShoppingCart.png" />
     <Content Include="assets\img\icons\unicons\wallet-info.png" />
     <Content Include="assets\img\icons\unicons\wallet.png" />
     <Content Include="assets\img\illustrations\girl-doing-yoga-light.png" />
     <Content Include="assets\img\illustrations\man-with-laptop-light.png" />
     <Content Include="assets\img\illustrations\page-misc-error-light.png" />
-    <Content Include="assets\img\layouts\layout-container-light.png" />
-    <Content Include="assets\img\layouts\layout-fluid-light.png" />
-    <Content Include="assets\img\layouts\layout-without-menu-light.png" />
-    <Content Include="assets\img\layouts\layout-without-navbar-light.png" />
     <Content Include="assets\js\config.js" />
     <Content Include="assets\js\dashboards-analytics.js" />
     <Content Include="assets\js\extended-ui-perfect-scrollbar.js" />
@@ -661,6 +642,9 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
+    <Folder Include="assets\img\avatars\" />
+    <Folder Include="assets\img\elements\" />
+    <Folder Include="assets\img\layouts\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

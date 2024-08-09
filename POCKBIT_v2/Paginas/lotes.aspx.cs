@@ -80,7 +80,7 @@ namespace POCKBIT_v2.Paginas
             txtNumeroLote.Text = "";
             txtFechaCaducidad.Value = "";
             lblId.Text = "";
-            ddlEstado.SelectedIndex = 1; // Resetear a "Activo"
+            ddlEstado.SelectedIndex = 1;
         }
 
         public string Get_ConnectionString()

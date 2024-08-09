@@ -76,7 +76,7 @@
             <div class="card-body">
                 <div class="card-title d-flex align-items-start justify-content-between">
                     <div class="avatar flex-shrink-0">
-                        <img src="../assets/img/icons/unicons/paypal.png" alt="Credit Card" class="rounded" />
+                        <img src="../assets/img/icons/unicons/UilPricetagAlt.png" alt="Credit Card" class="rounded" />
                     </div>
                 </div>
                 <span class="fw-semibold d-block mb-1">Ventas de este mes</span>
@@ -88,7 +88,7 @@
             <div class="card-body">
                 <div class="card-title d-flex align-items-start justify-content-between">
                     <div class="avatar flex-shrink-0">
-                        <img src="../assets/img/icons/unicons/cc-primary.png" alt="Credit Card" class="rounded" />
+                        <img src="../assets/img/icons/unicons/UilShoppingCart.png" alt="Credit Card" class="rounded" />
                     </div>
                 </div>
                 <span class="fw-semibold d-block mb-1">Compras este mes</span>
@@ -100,7 +100,7 @@
             <div class="card-body">
                 <div class="card-title d-flex align-items-start justify-content-between">
                     <div class="avatar flex-shrink-0">
-                        <img src="../assets/img/icons/unicons/cc-primary.png" alt="Credit Card" class="rounded" />
+                        <img src="../assets/img/icons/unicons/UilBox.png" alt="Credit Card" class="rounded" />
                     </div>
                 </div>
                 <span class="fw-semibold d-block mb-1">Inventario</span>
@@ -111,7 +111,7 @@
 
     <div class="row">
         <div class="col-12">
-            <div class="card mb-4">
+            <div class="card mb-3">
                 <h5 class="card-header">Descargar Reportes</h5>
                 <div class="card-body">
                     <small class="text-light fw-semibold">Ventas</small>

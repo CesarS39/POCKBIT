@@ -109,8 +109,6 @@ namespace POCKBIT_v2.Paginas
             using (XLWorkbook wb = new XLWorkbook())
             {
                 var ws = wb.Worksheets.Add(dt, "Laboratorios");
-
-                // Aplicar formato del encabezado
                 var headerRow = ws.Row(1);
                 headerRow.Style.Font.Bold = true;
                 headerRow.Style.Fill.BackgroundColor = XLColor.AirForceBlue;

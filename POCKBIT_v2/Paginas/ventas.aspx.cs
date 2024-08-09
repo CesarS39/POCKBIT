@@ -31,7 +31,6 @@ namespace POCKBIT_v2.Paginas
             {
                 var ws = wb.Worksheets.Add(dt, "Ventas");
 
-                // Aplicar formato del encabezado
                 var headerRow = ws.Row(1);
                 headerRow.Style.Font.Bold = true;
                 headerRow.Style.Fill.BackgroundColor = XLColor.AirForceBlue;

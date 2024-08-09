@@ -25,8 +25,6 @@ namespace POCKBIT_v2.Paginas
             using (XLWorkbook wb = new XLWorkbook())
             {
                 var ws = wb.Worksheets.Add(dt, "Medicamentos");
-
-                // Aplicar formato del encabezado
                 var headerRow = ws.Row(1);
                 headerRow.Style.Font.Bold = true;
                 headerRow.Style.Fill.BackgroundColor = XLColor.AirForceBlue;
@@ -228,12 +226,9 @@ namespace POCKBIT_v2.Paginas
             txtCodigoB.Text = row.Cells[2].Text.Trim();
             txtNombreC.Text = row.Cells[3].Text.Trim();
             txtDescripcion.Text = row.Cells[4].Text.Trim();
-            // Remover el símbolo de formato de moneda y otros caracteres no numéricos
             txtCosto.Text = row.Cells[6].Text.Replace("$", "").Trim();
             txtPrecioV.Text = row.Cells[7].Text.Replace("$", "").Trim();
             txtPrecioP.Text = row.Cells[8].Text.Replace("$", "").Trim();
-            // Asignación manual o ajuste necesario para ddlLaboratorio
-            // Si hay errores debido a valores no existentes, evitar esta asignación
             ddlEstado.SelectedValue = row.Cells[10].Text.Trim() == "True" ? "1" : "0";
         }
 

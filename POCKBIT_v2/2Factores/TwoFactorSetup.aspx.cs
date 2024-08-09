@@ -17,6 +17,10 @@ namespace POCKBIT_v2._2Factores
     {
         protected void Page_Load(object sender, EventArgs e)
         {
+            if (Session["TwoFactorVerified"] == null || !(bool)Session["TwoFactorVerified"])
+            {
+                Response.Redirect("~/Account/Login");
+            }
             if (!IsPostBack)
             {
                 var user = User.Identity.Name; // Asumiendo que el nombre de usuario es el nombre del usuario logueado

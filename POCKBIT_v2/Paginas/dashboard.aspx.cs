@@ -127,11 +127,9 @@ namespace POCKBIT_v2.Paginas
             bool esIncremento = porcentajeCambio >= 0;
             string claseColor = esIncremento ? "text-success" : "text-danger";
             string icono = esIncremento ? "bx-up-arrow-alt" : "bx-down-arrow-alt";
-
-            // Utilizar el color gris claro para el monto
-            label.CssClass = "card-title text-nowrap mb-2"; // Asegúrate de tener esta clase CSS definida con el color adecuado
+            label.CssClass = "card-title text-nowrap mb-2";
             label.Text = $"<span class='card-title text-nowrap mb-2'>${valorActual:N2}</span>";
-            // El porcentaje de cambio en verde o rojo según corresponda
+       
             label.Text += $" <small class='{claseColor} fw-semibold'><i class='bx {icono}'></i>{Math.Abs(porcentajeCambio):N2}%</small>";
         }
 
@@ -152,7 +150,6 @@ namespace POCKBIT_v2.Paginas
             }
             catch
             {
-                // Si ocurre un error al escribir en el archivo de log, no hacer nada para evitar excepciones adicionales
             }
         }
         // Eventos para los botones de ventas
